@@ -1,10 +1,12 @@
 from models import Project, Dependency
 from storage import projects, dependencies
-from fetch_osv import query_osv
+from fetch_osv import osv_fetch
+
+# parsing requirements before creating a project
 
 
 def parse_requirements(requirements: str) -> list[tuple[str, str | None]]:
-    deps = []
+    depends = []
     for line in requirements.strip().splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
@@ -12,52 +14,63 @@ def parse_requirements(requirements: str) -> list[tuple[str, str | None]]:
         for sep in ["==", ">=", "<=", "~=", ">", "<"]:
             if sep in line:
                 name, version = line.split(sep, 1)
-                deps.append((name.strip(), version.strip()))
+                depends.append((name.strip(), version.strip()))
                 break
         else:
-            deps.append((line, None))  # No version specified
-    return deps
+            depends.append((line, None))
+    return depends
+
+# project creation
 
 
 def create_project(name, description, requirements):
-    deps = parse_requirements(requirements)  # now a list of (name, version)
-    dep_objs = []
+    depends = parse_requirements(requirements)
+    depends_objects = []
 
-    for pkg_name, version in deps:
-        vulns = query_osv(pkg_name, version)  # ✅ fixed
-        dep = Dependency(name=pkg_name, version=version, vulnerabilities=vulns)
-        dep_objs.append(dep)
+    for pkg_name, version in depends:
+        vulns = osv_fetch(pkg_name, version)
+        depends = Dependency(
+            name=pkg_name, version=version, vulnerabilities=vulns)
+        depends_objects.append(depends)
         dependencies.setdefault(pkg_name, []).append(name)
 
     project = Project(name=name, description=description,
-                      dependencies=dep_objs)
+                      dependencies=depends_objects)
     projects[name] = project
     return project
+
+# get all projects
 
 
 def get_all_projects():
     return list(projects.values())
 
+# get a project by name
+
 
 def get_project(name):
     return projects.get(name)
 
+# get all dependencies
+
 
 def get_all_dependencies():
     result = []
-    for pkg, proj_list in dependencies.items():
-        result.append({"package": pkg, "used_in": proj_list})
+    for pkg, projects_list in dependencies.items():
+        result.append({"package": pkg, "used_in": projects_list})
     return result
+
+# get each dependencies with its details and where it is used in a project
 
 
 def get_dependency_details(pkg_name):
     used_in = dependencies.get(pkg_name, [])
-    vuln_versions = []
+    vulnerability_versions = []
     for proj in used_in:
-        for dep in projects[proj].dependencies:
-            if dep.name == pkg_name:
-                vuln_versions.append({
-                    "version": dep.version,
-                    "vulnerabilities": dep.vulnerabilities
+        for depend in projects[proj].dependencies:
+            if depend.name == pkg_name:
+                vulnerability_versions.append({
+                    "version": depend.version,
+                    "vulnerabilities": depend.vulnerabilities
                 })
-    return {"package": pkg_name, "used_in": used_in, "details": vuln_versions}
+    return {"package": pkg_name, "used_in": used_in, "details": vulnerability_versions}

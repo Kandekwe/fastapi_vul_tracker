@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, UploadFile, Form, File
-from models import ProjectCreate, Project, Dependency
+from fastapi import FastAPI, HTTPException
+from models import ProjectCreate, Project
 from services import (create_project as create_project_service, get_all_projects, get_project,
-                      get_all_dependencies, get_dependency_details, parse_requirements
+                      get_all_dependencies, get_dependency_details
                       )
 
 app = FastAPI()
+
+# Endpoints to navigate our business logic and responses
 
 
 @app.get("/")
@@ -17,7 +19,6 @@ async def create_project(project: ProjectCreate):
     return create_project_service(
         name=project.name,
         description=project.description,
-        # converting list to string
         requirements="\n".join(project.requirements)
     )
 

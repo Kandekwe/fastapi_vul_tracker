@@ -3,8 +3,10 @@ import requests
 
 osv_cache = TTLCache(maxsize=1000, ttl=3600)
 
+# function to call osv to fetch vulnerabilities associated to our projects
 
-def query_osv(package, version):
+
+def osv_fetch(package, version):
     cache_key = f"{package}=={version}"
     if cache_key in osv_cache:
         return osv_cache[cache_key]
@@ -14,6 +16,7 @@ def query_osv(package, version):
         "version": version
     })
     data = response.json()
-    vuln_ids = [v["id"] for v in data.get("vulns", [])]
-    osv_cache[cache_key] = vuln_ids
-    return vuln_ids
+    vulnerabilities_ids = [vul["id"]
+                           for vul in data.get("vulnerabilities", [])]
+    osv_cache[cache_key] = vulnerabilities_ids
+    return vulnerabilities_ids
