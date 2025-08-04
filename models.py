@@ -8,14 +8,14 @@ class ProjectCreate(BaseModel):
     requirements: List[str]
 
 
-class Project(BaseModel):
-    id: int
-    name: str
-    description: str
-    dependencies: List[str]
-
-
 class Dependency(BaseModel):
     name: str
-    projects: List[int]
+    version: str
     vulnerabilities: List[dict]
+
+
+class Project(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: str
+    dependencies: List[Dependency]
